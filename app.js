@@ -9,7 +9,8 @@ import authRouter from './routes/auth.routes.js';
 import subscriptionRouter from './routes/subscriptions.routes.js';
 import connectToDatabase from './database/mongodb.js';
 import errorMiddleware from './middleware/error.middleware.js';
-import { apiLimiter, authLimiter } from './middleware/rate-limit.middleware.js';
+import { apiLimiter, authLimiter } from './middleware/rateLimit.middleware.js';
+import workflowRouter from './routes/workflow.routes.js';
 
 dns.setServers(['8.8.8.8', '1.1.1.1']);
 
@@ -25,6 +26,7 @@ app.use(cookieParser());
 app.use('/api/v1/auth', authLimiter, authRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/subscriptions', subscriptionRouter);
+app.use('/api/v1/workflows', workflowRouter);
 
 app.get('/', (req, res) => {
   res.send('welcome to the app');

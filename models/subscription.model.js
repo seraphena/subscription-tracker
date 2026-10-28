@@ -1,119 +1,100 @@
+import mongoose from 'mongoose';
 
-import mongoose from "mongoose";
+const addPeriod = (date, frequency) => {
+  const next = new Date(date);
+
+  switch (frequency) {
+    case 'daily':
+      next.setDate(next.getDate() + 1);
+      break;
+    case 'weekly':
+      next.setDate(next.getDate() + 7);
+      break;
+    case 'monthly':
+      next.setMonth(next.getMonth() + 1);
+      break;
+    case 'yearly':
+      next.setFullYear(next.getFullYear() + 1);
+      break;
+  }
+
+  return next;
+};
+
+// The next renewal date that falls after "from" (today by default)
+export const getNextRenewalDate = (startDate, frequency, from = new Date()) => {
+  let next = addPeriod(startDate, frequency);
+
+  while (next <= from) {
+    next = addPeriod(next, frequency);
+  }
+
+  return next;
+};
 
 const subscriptionSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Subscription name is required"],
+      required: [true, 'Subscription name is required'],
       trim: true,
       minLength: 2,
       maxLength: 100,
     },
-
     price: {
       type: Number,
-      required: [true, "Subscription price is required"],
-      min: [0, "Price must be greater than or equal to 0"],
+      required: [true, 'Subscription price is required'],
+      min: [0, 'Price must be 0 or more'],
     },
-
     currency: {
       type: String,
-      enum: ["USD", "EUR", "GBP"],
-      default: "USD",
+      enum: ['INR', 'USD', 'EUR', 'GBP'],
+      default: 'INR',
     },
-
     frequency: {
       type: String,
-      enum: ["daily", "weekly", "monthly", "yearly"],
-      required: true,
+      enum: ['daily', 'weekly', 'monthly', 'yearly'],
+      required: [true, 'Frequency is required'],
     },
-
     category: {
       type: String,
-      enum: [
-        "sports",
-        "news",
-        "entertainment",
-        "lifestyle",
-        "technology",
-        "finance",
-        "politics",
-        "other",
-      ],
-      required: true,
+      enum: ['sports', 'news', 'entertainment', 'lifestyle', 'technology', 'finance', 'education', 'other'],
+      required: [true, 'Category is required'],
     },
-
     paymentMethod: {
       type: String,
-      required: true,
+      required: [true, 'Payment method is required'],
       trim: true,
     },
-
     status: {
       type: String,
-      enum: ["active", "cancelled", "expired"],
-      default: "active",
+      enum: ['active', 'cancelled', 'expired'],
+      default: 'active',
     },
-
     startDate: {
       type: Date,
-      required: true,
-      validate: {
-        validator: function (value) {
-          return value <= new Date();
-        },
-        message: "Start date cannot be in the future",
-      },
+      required: [true, 'Start date is required'],
     },
-
     renewalDate: {
       type: Date,
-      required: true,
-      validate: {
-        validator: function (value) {
-          return value > this.startDate;
-        },
-        message: "Renewal date must be after the start date",
-      },
     },
-
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       required: true,
       index: true,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-//auto calcuate fo teh renewal date is missing 
-subscriptionSchema.pre('save',function(next) {
-if(!this.renewalDate){
-    const renewalPeriods = {
-        daily :1,
-        weekly:7,
-        monthly:30,
-        yearly :365,
+// Work out the renewal date whenever the start date or frequency is set or changed
+subscriptionSchema.pre('save', function () {
+  if (this.isNew || this.isModified('startDate') || this.isModified('frequency')) {
+    this.renewalDate = getNextRenewalDate(this.startDate, this.frequency);
+  }
+});
 
-
-    };
-
-    this.renewalDate = new Date (this.startDate);
-    this.renewalDate.setDate(this.renewalDate() + renewalPeriods[this.frequency]);
-
-}
-if(this.renewalDate < new Date ()){
-    thsi.status = 'expired';
-
-}
-next();
-
-})
-
-const Subscription = mongoose.model("Subscription", subscriptionSchema);
+const Subscription = mongoose.model('Subscription', subscriptionSchema);
 
 export default Subscription;
